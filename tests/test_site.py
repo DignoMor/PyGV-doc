@@ -1,4 +1,6 @@
 import html
+import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -10,6 +12,13 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((REPO_ROOT / "code-ref.json").read_text(encoding="utf-8"))
+
+REPRESENTATIVE_EXAMPLES = [
+    "plot_bed",
+    "plot_bam_arc_reads",
+    "plot_group_autoscale",
+    "plot_gwas",
+]
 
 VIEWER_METHODS = [
     "add_track",
@@ -41,11 +50,36 @@ CANONICAL_TERMS = [
 ]
 
 
-def _built_page(relative: str) -> Path:
+def _build_dir() -> Path:
     build = os.environ.get("PYGV_DOC_BUILD")
     if not build:
         pytest.skip("set PYGV_DOC_BUILD to a built HTML directory")
-    return Path(build) / relative
+    return Path(build)
+
+
+def _built_page(relative: str) -> Path:
+    return _build_dir() / relative
+
+
+def _gallery_revision_dir() -> Path:
+    build = _build_dir()
+    revisions = sorted(p for p in (build / "gallery").glob("*/*") if p.is_dir())
+    assert len(revisions) == 1, f"expected one gallery revision, found {revisions}"
+    return revisions[0]
+
+
+def _paired_checkout() -> Path | None:
+    """Locate the code checkout the gallery was generated from, if available."""
+    candidates = []
+    env = os.environ.get("PYGV_CODE_DIR")
+    if env:
+        candidates.append(Path(env))
+    candidates.append(REPO_ROOT / ".build" / "code")
+    candidates.append(REPO_ROOT.parent / "code")
+    for candidate in candidates:
+        if (candidate / "examples").is_dir():
+            return candidate
+    return None
 
 
 def _html_text(path: Path) -> str:
@@ -91,6 +125,8 @@ def test_channel_and_branch_are_consistent():
         "api/index.md",
         "api/viewer.md",
         "api/utilities.md",
+        "gallery.md",
+        "third-party-notices.md",
         "provenance.md",
     ],
 )
@@ -124,8 +160,67 @@ def test_index_navigation_order():
         "installation",
         "concepts",
         "api/index",
+        "gallery",
         "provenance",
     ]
+
+
+def test_gallery_landing_page_uses_glob_and_introduces_the_gallery():
+    text = (REPO_ROOT / "docs" / "gallery.md").read_text(encoding="utf-8")
+    assert "Complete Gallery" in text
+    assert ":glob:" in text
+    assert "gallery/*/*/index" in text
+    assert "third-party-notices" in text
+    assert "pinned code checkout" in text or "paired checkout" in text
+    assert "requirements.txt" in text
+
+
+def test_notices_page_renders_the_canonical_notices():
+    text = (REPO_ROOT / "docs" / "third-party-notices.md").read_text(encoding="utf-8")
+    assert "include} ../THIRD_PARTY_NOTICES.md" in text
+    assert (REPO_ROOT / "THIRD_PARTY_NOTICES.md").is_file()
+
+
+def test_generated_gallery_output_is_not_tracked():
+    result = subprocess.run(
+        ["git", "ls-files", "docs/gallery"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.stdout.strip() == ""
+    assert "docs/gallery/" in (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
+
+
+def test_example_fixtures_are_not_copied_into_the_docs_tree():
+    docs_examples = REPO_ROOT / "docs" / "_examples"
+    assert sorted(path.name for path in docs_examples.iterdir()) == ["quickstart.py"]
+    assert not any((REPO_ROOT / "docs" / name).exists() for name in ("data", "examples"))
+
+
+def test_gallery_cache_identity_includes_revision_and_dependency_lock():
+    spec = importlib.util.spec_from_file_location(
+        "build_docs", REPO_ROOT / "tools" / "build_docs.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    digest = hashlib.sha256(
+        (REPO_ROOT / "requirements.txt").read_bytes()
+    ).hexdigest()[:12]
+    assert module.dependency_lock_digest() == digest
+
+    path = module.gallery_dir(MANIFEST["channel"], MANIFEST["commit"], digest)
+    assert MANIFEST["commit"][:12] in path
+    assert digest in path
+
+
+def test_conf_reads_examples_from_the_paired_checkout():
+    text = (REPO_ROOT / "docs" / "conf.py").read_text(encoding="utf-8")
+    assert 'Path(_code_dir) / "examples"' in text
+    assert "PYGV_GALLERY_DIR" in text
+    assert '"download_all_examples": True' in text
 
 
 def test_concepts_states_coordinate_convention():
@@ -233,3 +328,73 @@ def test_built_api_index_links_to_children():
     raw = _built_page("api/index.html").read_text(encoding="utf-8")
     assert 'href="viewer.html"' in raw
     assert 'href="utilities.html"' in raw
+
+
+# -- Rendered gallery --------------------------------------------------------
+
+
+def test_built_gallery_has_one_page_per_checkout_example():
+    pages = sorted(path.name for path in _gallery_revision_dir().glob("plot_*.html"))
+    checkout = _paired_checkout()
+    if checkout is None:
+        pytest.skip("paired code checkout not available to count examples")
+    scripts = sorted(path.name for path in (checkout / "examples").glob("plot_*.py"))
+    assert scripts, "no plot_*.py examples found in the paired checkout"
+    assert len(pages) == len(scripts)
+    assert {name[: -len(".html")] for name in pages} == {
+        name[: -len(".py")] for name in scripts
+    }
+
+
+def test_built_gallery_uses_a_single_clean_revision_directory():
+    build = _build_dir()
+    revisions = sorted(path.name for path in (build / "gallery").glob("*/*"))
+    assert len(revisions) == 1
+    revision = revisions[0]
+    assert MANIFEST["commit"][:12] in revision
+    lock = hashlib.sha256(
+        (REPO_ROOT / "requirements.txt").read_bytes()
+    ).hexdigest()[:12]
+    assert revision.endswith(lock)
+
+
+@pytest.mark.parametrize("name", REPRESENTATIVE_EXAMPLES)
+def test_built_gallery_example_renders_an_image(name):
+    build = _build_dir()
+    raw = (_gallery_revision_dir() / f"{name}.html").read_text(encoding="utf-8")
+    image = build / "_images" / f"sphx_glr_{name}_001.png"
+    assert image.is_file() and image.stat().st_size > 0
+    assert f"sphx_glr_{name}_001.png" in raw
+    assert "<img" in raw
+
+
+@pytest.mark.parametrize("name", REPRESENTATIVE_EXAMPLES)
+def test_built_gallery_example_exposes_script_downloads(name):
+    build = _build_dir()
+    raw = (_gallery_revision_dir() / f"{name}.html").read_text(encoding="utf-8")
+    py = re.search(r"_downloads/[0-9a-f]+/" + re.escape(name) + r"\.py", raw)
+    assert py, f"no .py download link for {name}"
+    assert (build / py.group(0)).is_file()
+    zips = re.findall(r"_downloads/[0-9a-f]+/" + re.escape(name) + r"\.zip", raw)
+    assert zips, f"no .zip download link for {name}"
+    assert (build / zips[0]).is_file()
+
+
+def test_built_gallery_is_reachable_from_navigation():
+    index = _built_page("index.html").read_text(encoding="utf-8")
+    assert 'href="gallery.html"' in index
+
+    landing = _built_page("gallery.html").read_text(encoding="utf-8")
+    assert "Complete Gallery" in landing
+    generated = re.search(r'href="(gallery/[^"]+/index\.html)"', landing)
+    assert generated, "gallery landing page does not link to the generated index"
+    assert (_build_dir() / generated.group(1)).is_file()
+
+
+def test_built_gallery_landing_links_to_third_party_notices():
+    landing = _built_page("gallery.html").read_text(encoding="utf-8")
+    assert 'href="third-party-notices.html"' in landing
+    notices = _html_text(_built_page("third-party-notices.html"))
+    for marker in ("Sphinx-Gallery", "ENCODE", "GENCODE", "GWAS"):
+        assert marker in notices
+

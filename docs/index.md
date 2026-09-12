@@ -22,6 +22,7 @@ overview
 installation
 concepts
 api/index
+gallery
 provenance
 ```
 
@@ -31,4 +32,5 @@ provenance
 - {doc}`installation` installs the package and renders a first figure.
 - {doc}`concepts` defines the vocabulary for composing a genome viewer.
 - {doc}`api/index` is the generated reference for the public API.
+- {doc}`gallery` executes and renders every public example.
 - {doc}`provenance` records exactly which revisions this site describes.

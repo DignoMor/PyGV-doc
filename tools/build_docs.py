@@ -18,9 +18,11 @@ CI use (clone the pinned commit from the manifest)::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -135,6 +137,51 @@ def doc_commit() -> str:
     return result.stdout.strip() if result.returncode == 0 else "unknown"
 
 
+def dependency_lock_digest() -> str:
+    """Short digest of the documentation dependency lock.
+
+    The gallery cache identity must change whenever the pins in
+    ``requirements.txt`` change, because a different Matplotlib or
+    Sphinx-Gallery version can render a different figure.
+    """
+    lock = REPO_ROOT / "requirements.txt"
+    if not lock.is_file():
+        return "nolock"
+    return hashlib.sha256(lock.read_bytes()).hexdigest()[:12]
+
+
+def gallery_dir(channel: str, commit: str, lock_digest: str) -> str:
+    """Relative (to ``docs/``) gallery output path for one build identity.
+
+    The path folds in the channel, the exact paired code revision, and the
+    dependency lock digest, so generated gallery pages from a different build
+    identity can never be reused or picked up by the glob toctree.
+    """
+    return f"gallery/{channel}/{commit[:12]}-{lock_digest}"
+
+
+def prune_gallery(target: str) -> None:
+    """Delete generated galleries that do not belong to this build.
+
+    Gallery sources are disposable and revision-keyed. Removing sibling
+    revisions and other channels keeps a stale glob toctree from publishing
+    generated pages that no longer match the paired checkout.
+    """
+    root = DOCS_DIR / "gallery"
+    if not root.is_dir():
+        return
+    keep = (DOCS_DIR / target).resolve()
+    for channel_dir in root.iterdir():
+        if not channel_dir.is_dir():
+            continue
+        if channel_dir.resolve() != keep.parent:
+            shutil.rmtree(channel_dir, ignore_errors=True)
+            continue
+        for revision_dir in channel_dir.iterdir():
+            if revision_dir.is_dir() and revision_dir.resolve() != keep:
+                shutil.rmtree(revision_dir, ignore_errors=True)
+
+
 def build(args: argparse.Namespace) -> Path:
     manifest = load_manifest()
     channel = args.channel or manifest["channel"]
@@ -145,6 +192,9 @@ def build(args: argparse.Namespace) -> Path:
     doctrees = outdir.parent / "doctrees"
     outdir.mkdir(parents=True, exist_ok=True)
 
+    gallery = gallery_dir(channel, manifest["commit"], dependency_lock_digest())
+    prune_gallery(gallery)
+
     env = os.environ.copy()
     env.update(
         {
@@ -153,6 +203,7 @@ def build(args: argparse.Namespace) -> Path:
             "PYGV_CODE_BRANCH": manifest["branch"],
             "PYGV_DOC_CHANNEL": channel,
             "PYGV_DOC_COMMIT": doc_commit(),
+            "PYGV_GALLERY_DIR": gallery,
         }
     )
 

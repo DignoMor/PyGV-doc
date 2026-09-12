@@ -174,9 +174,15 @@ intersphinx_mapping = {
 _code_examples = Path(_code_dir) / "examples" if _code_dir else None
 if _code_examples and _code_examples.is_dir():
     extensions.append("sphinx_gallery.gen_gallery")
+    # Generated gallery sources live outside the tracked source tree so they
+    # stay disposable. The build entry point keys PYGV_GALLERY_DIR on the
+    # documentation channel, the exact paired code revision, and a digest of
+    # the dependency lock, so Sphinx-Gallery's per-example cache can never
+    # leak generated figures across a revision or dependency change.
+    _gallery_dir = _env("PYGV_GALLERY_DIR", "gallery")
     _gallery_conf = {
         "examples_dirs": str(_code_examples),
-        "gallery_dirs": "gallery",
+        "gallery_dirs": _gallery_dir,
         "filename_pattern": r"/plot_",
         "image_scrapers": ("matplotlib",),
         "within_subsection_order": "FileNameSortKey",
