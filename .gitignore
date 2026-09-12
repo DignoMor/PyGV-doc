@@ -1,0 +1,12 @@
+# Build and generated output
+build/
+_build/
+.build/
+docs/_build/
+docs/gallery/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
