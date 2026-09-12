@@ -123,6 +123,45 @@ napoleon_google_docstring = True
 napoleon_numpy_docstring = True
 napoleon_use_rtype = False
 
+
+def _sanitize_pygv_docstrings(app, what, name, obj, options, lines):
+    """Normalize paired-checkout docstrings for a warnings-as-errors build.
+
+    A few ``pygv`` docstrings are valid Python but not valid reStructuredText
+    once autodoc renders them: three method docstrings embed ``.. plot::``
+    directives that belong to the example gallery, and one omits the blank line
+    before its parameter field list. The gallery owns those examples, so strip
+    the directives here and repair the field-list separation. This only touches
+    rendered documentation; it never modifies the code checkout.
+    """
+    if not name.startswith("pygv"):
+        return
+    cleaned = []
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith(".. plot::"):
+            continue
+        if stripped.startswith(":") and cleaned:
+            previous = cleaned[-1]
+            if (
+                previous.strip()
+                and not previous.lstrip().startswith(":")
+                and not previous[:1].isspace()
+            ):
+                cleaned.append("")
+        cleaned.append(line)
+    while cleaned and not cleaned[-1].strip():
+        cleaned.pop()
+    if cleaned and cleaned[-1].strip() == ".. rubric:: Examples":
+        cleaned.pop()
+        while cleaned and not cleaned[-1].strip():
+            cleaned.pop()
+    lines[:] = cleaned
+
+
+def setup(app):
+    app.connect("autodoc-process-docstring", _sanitize_pygv_docstrings)
+
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "matplotlib": ("https://matplotlib.org/stable", None),

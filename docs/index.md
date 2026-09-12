@@ -20,6 +20,8 @@ commit {{ code_commit_short }} on the {{ code_branch }} branch. See
 
 overview
 installation
+concepts
+api/index
 provenance
 ```
 
@@ -27,4 +29,6 @@ provenance
 
 - {doc}`overview` explains what PyGV does and how its pieces fit together.
 - {doc}`installation` installs the package and renders a first figure.
+- {doc}`concepts` defines the vocabulary for composing a genome viewer.
+- {doc}`api/index` is the generated reference for the public API.
 - {doc}`provenance` records exactly which revisions this site describes.

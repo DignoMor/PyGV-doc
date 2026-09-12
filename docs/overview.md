@@ -70,4 +70,33 @@ annotation track
 
 numerical track
     A track that draws a numeric signal as a line or bar over the interval.
+
+feature lane
+    A horizontal placement band inside an annotation track that keeps
+    overlapping features from obscuring one another.
+
+dual-axis track
+    A track composition that renders two child tracks against independent left
+    and right y-axes over the same genomic interval.
+
+group autoscale
+    A rule that gives selected numerical tracks in a genome viewer the same
+    rendered y-axis range and ticks.
+
+group label
+    A label spanning a contiguous vertical range of tracks in a genome viewer.
+
+track highlight
+    A genomic span drawn within the axes of selected tracks.
+
+global highlight
+    A genomic span drawn continuously across tracks and the spaces between
+    them.
+
+axis mark
+    A position marker attached to the top coordinate axis, optionally carrying
+    a label.
+
+global vertical line
+    A positional line drawn across every track and the spaces between them.
 ```
