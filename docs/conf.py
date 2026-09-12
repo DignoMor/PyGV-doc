@@ -87,6 +87,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "pygv_fields",
+    "agent_artifacts",
 ]
 
 _source_suffix = {".md": "markdown", ".rst": "restructuredtext"}

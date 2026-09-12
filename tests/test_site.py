@@ -640,3 +640,178 @@ def test_built_gallery_landing_links_to_third_party_notices():
     for marker in ("Sphinx-Gallery", "ENCODE", "GENCODE", "GWAS"):
         assert marker in notices
 
+
+# -- Agent-readable artifacts ------------------------------------------------
+
+AGENT_EXCLUDED_NAMES = {
+    "search.html",
+    "genindex.html",
+    "py-modindex.html",
+    "modindex.html",
+    "404.html",
+}
+AGENT_EXCLUDED_PARTS = {"_static", "_sources", "_downloads", "_images"}
+
+UNRESOLVED_DIRECTIVE = re.compile(
+    r"\{autoclass\}|\{autofunction\}|\{automodule\}|\{eval-rst\}|"
+    r"\{toctree\}|\{literalinclude\}|\{admonition\}|"
+    r"\.\.\s+(?:auto(?:class|function|module)|plot)::"
+)
+
+PRIVATE_MARKERS = ["DignoMor/PyGV-spec", "release-map", ".agents"]
+
+
+def _canonical_html_pages() -> list:
+    build = _build_dir()
+    pages = []
+    for path in sorted(build.rglob("*.html")):
+        rel = path.relative_to(build)
+        if rel.name in AGENT_EXCLUDED_NAMES:
+            continue
+        if any(part in AGENT_EXCLUDED_PARTS for part in rel.parts):
+            continue
+        pages.append(rel)
+    return pages
+
+
+def _markdown_links(text: str) -> list:
+    return re.findall(r"\]\(([^)\s]+)\)", text)
+
+
+def test_each_channel_root_has_exactly_one_llms_txt():
+    build = _build_dir()
+    found = sorted(path.relative_to(build).as_posix() for path in build.rglob("llms.txt"))
+    assert found == ["llms.txt"]
+
+
+def test_llms_txt_states_project_install_import_coordinates_and_version():
+    text = (_build_dir() / "llms.txt").read_text(encoding="utf-8")
+    lines = text.splitlines()
+    assert lines[0] == "# PyGV"
+    assert lines[2].startswith("> "), "llms.txt must open with a concise summary"
+    assert "pip install GenomeViewer" in text
+    assert "`pygv`" in text and "from pygv.viewer import GenomeViewer" in text
+    assert "zero-based" in text and "half-open" in text
+    assert "Documentation channel:" in text
+    assert MANIFEST["commit"][:7] in text
+
+    provenance = re.sub(
+        r"\s+",
+        " ",
+        _html_text(_built_page("provenance.html")),
+    )
+    version = re.search(r"GenomeViewer version (\S+)", provenance)
+    assert version, "could not read the rendered GenomeViewer version"
+    assert version.group(1) in text
+
+
+def test_llms_txt_groups_and_describes_canonical_resources():
+    text = (_build_dir() / "llms.txt").read_text(encoding="utf-8")
+    for section in (
+        "## Start here",
+        "## API reference",
+        "## Examples",
+        "## Project metadata",
+    ):
+        assert section in text
+    for line in text.splitlines():
+        if line.startswith("- [") and line.endswith("."):
+            assert "): " in line, f"undescribed llms.txt entry: {line}"
+
+
+def test_llms_txt_links_resolve_to_agent_readable_markdown():
+    build = _build_dir()
+    text = (build / "llms.txt").read_text(encoding="utf-8")
+    links = _markdown_links(text)
+    assert links
+    for target in links:
+        assert not target.startswith(("http://", "https://", "/")), target
+        resolved = (build / target).resolve()
+        assert resolved.is_file(), f"unresolved llms.txt link: {target}"
+        assert resolved.suffix == ".md", target
+        body = resolved.read_text(encoding="utf-8")
+        assert len(body.strip()) > 200, f"trivial markdown target: {target}"
+        assert not UNRESOLVED_DIRECTIVE.search(body), target
+
+
+def test_no_llms_full_txt_is_emitted():
+    assert not list(_build_dir().rglob("llms-full*"))
+
+
+def test_every_canonical_page_has_a_markdown_alternative():
+    build = _build_dir()
+    pages = _canonical_html_pages()
+    assert pages, "no canonical HTML pages found"
+    for rel in pages:
+        markdown = (build / rel).with_suffix(".md")
+        assert markdown.is_file(), f"missing markdown alternative for {rel}"
+        assert markdown.read_text(encoding="utf-8").strip(), rel
+
+
+def test_non_canonical_pages_have_no_markdown_alternative():
+    build = _build_dir()
+    for name in ("search.html", "genindex.html"):
+        assert not (build / name).with_suffix(".md").exists()
+
+
+def test_every_canonical_page_advertises_markdown_and_llms():
+    build = _build_dir()
+    for rel in _canonical_html_pages():
+        raw = (build / rel).read_text(encoding="utf-8")
+        alternate = re.search(
+            r'<link rel="alternate" type="text/markdown" href="([^"]+)"', raw
+        )
+        assert alternate, f"{rel} does not advertise a markdown alternate"
+        advertised = (build / rel).parent / alternate.group(1)
+        assert advertised.resolve() == (build / rel).with_suffix(".md").resolve()
+
+        llms = re.search(r'<link rel="llms"[^>]*href="([^"]+)"', raw)
+        assert llms, f"{rel} does not advertise llms.txt"
+        assert (
+            (build / rel).parent / llms.group(1)
+        ).resolve() == (build / "llms.txt").resolve()
+        assert "llms.txt" in raw
+
+
+def test_markdown_alternatives_carry_expanded_api_content():
+    build = _build_dir()
+    viewer = (build / "api" / "viewer.md").read_text(encoding="utf-8")
+    assert "hspace=0.2" in viewer
+    assert "fig_width=8" in viewer
+    assert "set_global_vertical_line" in viewer
+    assert "Genome Viewer" in viewer
+
+    tracks = (build / "api" / "tracks.md").read_text(encoding="utf-8")
+    assert "Configuration fields" in tracks
+    for field in ("inward_yticks", "inward_ticks", "show_mode"):
+        assert field in tracks
+    for description in ("Alpha of patches", "Path to the BAM file"):
+        assert description in tracks
+    assert "Literal['line', 'bar']" in tracks
+
+    utilities = (build / "api" / "utilities.md").read_text(encoding="utf-8")
+    assert "check_accessibility" in utilities
+    assert "allow_remote" in utilities
+    assert "does **not** probe a remote endpoint" in utilities
+
+
+def test_markdown_alternatives_have_no_unresolved_directives():
+    build = _build_dir()
+    for rel in _canonical_html_pages():
+        body = (build / rel).with_suffix(".md").read_text(encoding="utf-8")
+        found = UNRESOLVED_DIRECTIVE.search(body)
+        assert not found, f"{rel} still contains directive {found.group(0)!r}"
+
+
+def test_agent_artifacts_exclude_private_planning_material():
+    build = _build_dir()
+    artifacts = [build / "llms.txt"]
+    artifacts.extend(
+        (build / rel).with_suffix(".md") for rel in _canonical_html_pages()
+    )
+    for artifact in artifacts:
+        body = artifact.read_text(encoding="utf-8")
+        for marker in PRIVATE_MARKERS:
+            assert marker not in body, f"{marker} leaked into {artifact.name}"
+        assert not re.search(r"\bADR\b", body), f"ADR marker in {artifact.name}"
+
