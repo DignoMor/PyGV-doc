@@ -49,6 +49,54 @@ CANONICAL_TERMS = [
     "dual-axis track",
 ]
 
+GLOSSARY_TERMS = CANONICAL_TERMS + [
+    "gwas marker",
+    "bedpe link",
+    "significance line",
+]
+
+TRACK_EXPORTS = [
+    "Track",
+    "AnnotationTrack",
+    "NumericalTrack",
+    "DynamicValueTrack",
+    "DualAxisTrack",
+    "CoverageTrack",
+    "CollapsedReadTrack",
+    "SplicedReadTrack",
+    "StrandSpecificCoverageTrack",
+    "ReadArcTrack",
+    "BedTrack",
+    "BedPETrack",
+    "ConnectionArcTrack",
+    "UCSCMutationTrack",
+    "BigBed6Track",
+    "BigWigTrack",
+    "OverlayingTrack",
+    "PairedStrandSpecificTrack",
+    "PairedStrandSpecificTracks",
+    "PairedStrandlessTrack",
+    "GtfTrack",
+    "GWASTrack",
+    "LogoTrack",
+    "DynseqTrack",
+]
+
+# One representative per track family, sampled in the rendered reference.
+TRACK_FAMILIES = {
+    "base": "Track",
+    "annotation": "BedTrack",
+    "alignment": "CoverageTrack",
+    "numerical signal": "BigWigTrack",
+    "paired/overlay": "PairedStrandSpecificTrack",
+    "connections": "BedPETrack",
+    "sequence": "LogoTrack",
+    "gwas": "GWASTrack",
+    "dual-axis": "DualAxisTrack",
+}
+
+LIFECYCLE_HOOKS = ["_pre_plot_hook", "_draw_track", "_post_plot_hook"]
+
 
 def _build_dir() -> Path:
     build = os.environ.get("PYGV_DOC_BUILD")
@@ -122,10 +170,14 @@ def test_channel_and_branch_are_consistent():
         "overview.md",
         "installation.md",
         "concepts.md",
+        "track-guide.md",
+        "data-formats.md",
         "api/index.md",
         "api/viewer.md",
+        "api/tracks.md",
         "api/utilities.md",
         "gallery.md",
+        "changelog.md",
         "third-party-notices.md",
         "provenance.md",
     ],
@@ -159,8 +211,11 @@ def test_index_navigation_order():
         "overview",
         "installation",
         "concepts",
+        "track-guide",
         "api/index",
+        "data-formats",
         "gallery",
+        "changelog",
         "provenance",
     ]
 
@@ -235,7 +290,7 @@ def test_concepts_covers_canonical_term(term):
     assert term in text
 
 
-@pytest.mark.parametrize("term", CANONICAL_TERMS)
+@pytest.mark.parametrize("term", GLOSSARY_TERMS)
 def test_glossary_defines_canonical_term(term):
     text = (REPO_ROOT / "docs" / "overview.md").read_text(encoding="utf-8").lower()
     assert f"\n{term}\n" in text
@@ -251,6 +306,74 @@ def test_utilities_reference_uses_autodoc():
     text = (REPO_ROOT / "docs" / "api" / "utilities.md").read_text(encoding="utf-8")
     assert "autofunction:: pygv.utils.check_accessibility" in text
     assert "does **not** probe" in text
+
+
+@pytest.mark.parametrize("name", TRACK_EXPORTS)
+def test_tracks_reference_documents_every_export(name):
+    text = (REPO_ROOT / "docs" / "api" / "tracks.md").read_text(encoding="utf-8")
+    assert f".. autoclass:: pygv.tracks.{name}\n" in text
+
+
+def test_tracks_reference_requests_inherited_fields_and_hooks():
+    text = (REPO_ROOT / "docs" / "api" / "tracks.md").read_text(encoding="utf-8")
+    assert ":inherited-members:" in text
+    assert ":private-members: _pre_plot_hook, _draw_track, _post_plot_hook" in text
+
+
+def test_tracks_reference_lists_no_other_private_members():
+    text = (REPO_ROOT / "docs" / "api" / "tracks.md").read_text(encoding="utf-8")
+    private = set(re.findall(r"(?<![\w:])_([A-Za-z]\w*)", text))
+    assert private <= {"pre_plot_hook", "draw_track", "post_plot_hook"}
+
+
+def test_track_guide_covers_every_family():
+    text = (REPO_ROOT / "docs" / "track-guide.md").read_text(encoding="utf-8")
+    for heading in (
+        "Annotation tracks",
+        "Alignment tracks",
+        "Numerical signal tracks",
+        "Paired and overlay compositions",
+        "Connections",
+        "Sequence tracks",
+        "GWAS",
+    ):
+        assert heading in text
+    for family in TRACK_FAMILIES.values():
+        assert f"pygv.tracks.{family}" in text
+
+
+def test_track_guide_prefers_canonical_paired_name_and_flags_alias():
+    text = (REPO_ROOT / "docs" / "track-guide.md").read_text(encoding="utf-8")
+    assert "PairedStrandSpecificTrack` is the **canonical**" in text
+    assert "PairedStrandSpecificTracks` is a **retained compatibility" in text
+    for alias in ("inward_ticks", "transformation", "draw_y_independently", "flip"):
+        assert alias in text
+
+
+def test_data_formats_documents_coordinates_sources_and_indexing():
+    text = (REPO_ROOT / "docs" / "data-formats.md").read_text(encoding="utf-8").lower()
+    assert "zero-based" in text
+    assert "half-open" in text
+    for marker in ("remote", "index", "bam", "bigwig", "bed6+"):
+        assert marker in text
+
+
+def test_changelog_documents_migration():
+    text = (REPO_ROOT / "docs" / "changelog.md").read_text(encoding="utf-8")
+    assert "Migration checklist" in text
+    assert "layout_height()" in text
+    assert "Python 3.10" in text
+
+
+def test_track_guide_states_the_gwas_contract():
+    text = (REPO_ROOT / "docs" / "track-guide.md").read_text(encoding="utf-8")
+    assert "end - start == 1" in text
+    assert "raw" in text.lower()
+    assert "-log10" in text
+    assert "RuntimeWarning" in text
+    assert "significance_lines" in text
+    assert "tracked separately" in text
+    assert "not supported behavior" in text
 
 
 # -- Rendered-output tests ---------------------------------------------------
@@ -327,7 +450,126 @@ def test_built_api_viewer_links_to_concepts():
 def test_built_api_index_links_to_children():
     raw = _built_page("api/index.html").read_text(encoding="utf-8")
     assert 'href="viewer.html"' in raw
+    assert 'href="tracks.html"' in raw
     assert 'href="utilities.html"' in raw
+
+
+def _tracks_raw() -> str:
+    return _built_page("api/tracks.html").read_text(encoding="utf-8")
+
+
+def _tracks_text() -> str:
+    return _html_text(_built_page("api/tracks.html")).lower()
+
+
+def _rendered_private_member_names(raw: str) -> set:
+    """Names of documented underscore members across the tracks reference."""
+    return set(
+        re.findall(r'id="pygv\.tracks\.\w+\.(_\w+)"', raw)
+    )
+
+
+@pytest.mark.parametrize("name", TRACK_EXPORTS)
+def test_built_tracks_reference_lists_every_export(name):
+    assert f'id="pygv.tracks.{name}"' in _tracks_raw()
+
+
+@pytest.mark.parametrize("family,representative", sorted(TRACK_FAMILIES.items()))
+def test_built_tracks_reference_samples_each_family(family, representative):
+    raw = _tracks_raw()
+    assert f'id="pygv.tracks.{representative}"' in raw
+    assert "Configuration fields" in raw
+
+
+def test_built_tracks_reference_shows_inherited_fields_and_descriptions():
+    text = _tracks_text()
+    for field in ("inward_yticks", "data_transform", "min_val", "show_range"):
+        assert field in text
+    for description in (
+        "alpha of patches",
+        "path to the bam file",
+        "path to the annotation file",
+        "height of patches",
+    ):
+        assert description in text
+
+
+def test_built_tracks_reference_shows_compatibility_aliases():
+    text = _tracks_text()
+    for alias in ("inward_ticks", "transformation", "draw_y_independently", "flip"):
+        assert alias in text
+
+
+def test_built_tracks_reference_shows_literals_and_defaults():
+    text = _tracks_text()
+    assert "literal['line', 'bar']" in text
+    assert "literal['expanded', 'collapsed']" in text
+    assert "positivefloat = 1" in text
+
+
+def test_built_tracks_reference_exposes_only_three_lifecycle_hooks():
+    rendered = _rendered_private_member_names(_tracks_raw())
+    assert set(LIFECYCLE_HOOKS) <= rendered
+    assert rendered <= set(LIFECYCLE_HOOKS)
+
+
+def test_built_tracks_reference_excludes_other_private_members():
+    raw = _tracks_raw()
+    for private in (
+        'id="pygv.tracks.GWASTrack._get"',
+        'id="pygv.tracks.GWASTrack._validate_and_collect"',
+        'id="pygv.tracks.CoverageTrack._bam"',
+        'id="pygv.tracks.BedPETrack._normalize_highlight_link"',
+        "_GenericBamTrack",
+        "_GenericNumericalBamTrack",
+        "_validate_color",
+        "model_fields",
+    ):
+        assert private not in raw
+
+
+def test_built_tracks_reference_links_from_track_guide():
+    raw = _built_page("track-guide.html").read_text(encoding="utf-8")
+    assert 'href="api/tracks.html"' in raw
+
+
+def test_built_track_guide_covers_each_family():
+    text = _html_text(_built_page("track-guide.html")).lower()
+    for phrase in (
+        "annotation tracks",
+        "alignment tracks",
+        "numerical signal tracks",
+        "paired and overlay compositions",
+        "connections",
+        "sequence tracks",
+        "gwas",
+    ):
+        assert phrase in text
+
+
+def test_built_gwas_contract_language():
+    text = _html_text(_built_page("track-guide.html"))
+    assert "end - start == 1" in text
+    assert "raw" in text.lower()
+    assert "-log10(p)" in text
+    assert "RuntimeWarning" in text
+    assert "significance_lines" in text
+    assert "tracked separately" in text
+    assert "not supported behavior" in text
+
+
+def test_built_data_formats_documents_coordinates_and_indexing():
+    text = _html_text(_built_page("data-formats.html")).lower()
+    assert "zero-based" in text
+    assert "half-open" in text
+    assert "check_accessibility" in text
+    assert "indexing expectations" in text
+
+
+def test_built_changelog_documents_migration():
+    text = _html_text(_built_page("changelog.html"))
+    assert "Migration checklist" in text
+    assert "layout_height()" in text
 
 
 # -- Rendered gallery --------------------------------------------------------

@@ -21,8 +21,11 @@ commit {{ code_commit_short }} on the {{ code_branch }} branch. See
 overview
 installation
 concepts
+track-guide
 api/index
+data-formats
 gallery
+changelog
 provenance
 ```
 
@@ -31,6 +34,9 @@ provenance
 - {doc}`overview` explains what PyGV does and how its pieces fit together.
 - {doc}`installation` installs the package and renders a first figure.
 - {doc}`concepts` defines the vocabulary for composing a genome viewer.
+- {doc}`track-guide` helps you choose a track by genomic data type.
 - {doc}`api/index` is the generated reference for the public API.
+- {doc}`data-formats` documents sources, indexing, and coordinates.
 - {doc}`gallery` executes and renders every public example.
+- {doc}`changelog` summarizes the paired revision's compatibility changes.
 - {doc}`provenance` records exactly which revisions this site describes.

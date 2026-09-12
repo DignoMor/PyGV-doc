@@ -11,11 +11,17 @@ reproducible and never floats to a branch head.
 import json
 import os
 import shutil
+import sys
 from datetime import date
 from pathlib import Path
 
 DOCS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = DOCS_DIR.parent
+
+# Local Sphinx extension that renders Pydantic track configuration from the
+# paired checkout. Keeping it beside the docs sources makes the rendered
+# field descriptions, defaults, literals, and aliases revision-accurate.
+sys.path.insert(0, str(DOCS_DIR / "_ext"))
 
 
 def _env(name: str, default: str = "") -> str:
@@ -80,6 +86,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
+    "pygv_fields",
 ]
 
 _source_suffix = {".md": "markdown", ".rst": "restructuredtext"}
@@ -112,7 +119,6 @@ myst_substitutions = {
 autosummary_generate = True
 autodoc_default_options = {
     "members": True,
-    "show-inheritance": True,
     "undoc-members": False,
     "special-members": False,
     "inherited-members": False,

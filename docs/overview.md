@@ -99,4 +99,16 @@ axis mark
 
 global vertical line
     A positional line drawn across every track and the spaces between them.
+
+gwas marker
+    A single-base association record whose raw p-value is rendered as a
+    transformed numerical value.
+
+bedpe link
+    A paired set of genomic anchors representing a relationship drawn between
+    two intervals.
+
+significance line
+    A horizontal reference corresponding to a raw p-value threshold after
+    applying the GWAS track's y transform.
 ```
