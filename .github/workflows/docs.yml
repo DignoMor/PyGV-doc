@@ -35,7 +35,9 @@ jobs:
       - name: Check out documentation dev (development)
         uses: actions/checkout@v4
         with:
-          ref: dev
+          # On pull requests, build the proposed head so the artifact shows the
+          # change under review; on pushes and manual dispatch, the dev branch.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'dev' }}
           path: doc-dev
           fetch-depth: 0
       - name: Set up Python
@@ -81,6 +83,27 @@ jobs:
           MPLBACKEND: Agg
           PYGV_DOC_BUILD: ${{ runner.temp }}/channels/development
         run: python -m pytest doc-dev/tests -q
+
+      # Link checking is part of the strict gate for authored pages, generated
+      # API reference, gallery navigation, and agent-facing links.
+      - name: Link check stable channel
+        env:
+          MPLBACKEND: Agg
+        run: |
+          python doc-main/tools/build_docs.py \
+            --channel stable \
+            --no-install \
+            --builder linkcheck \
+            --outdir "$RUNNER_TEMP/linkcheck/stable"
+      - name: Link check development channel
+        env:
+          MPLBACKEND: Agg
+        run: |
+          python doc-dev/tools/build_docs.py \
+            --channel development \
+            --no-install \
+            --builder linkcheck \
+            --outdir "$RUNNER_TEMP/linkcheck/development"
 
       # One fresh aggregate is rebuilt from both channels every run, so a
       # single channel's build cannot erase the other.

@@ -244,10 +244,15 @@ def test_build_job_uploads_an_inspectable_artifact(workflow):
 
 def test_build_job_builds_both_channels_with_build_docs(workflow):
     runs = _runs(_job(workflow, "build"))
-    assert runs.count("tools/build_docs.py") == 2
+    assert runs.count("tools/build_docs.py") >= 2
     assert "--channel stable" in runs
     assert "--channel development" in runs
     assert "--no-install" in runs
+
+
+def test_build_job_link_checks_both_channels(workflow):
+    runs = _runs(_job(workflow, "build"))
+    assert runs.count("--builder linkcheck") == 2
 
 
 def test_build_job_runs_the_strict_suite_for_both_channels(workflow):

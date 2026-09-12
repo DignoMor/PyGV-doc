@@ -88,10 +88,10 @@ def resolve_code_dir(manifest: dict, code_dir: Path | None) -> Path:
         verify_commit(resolved, manifest)
         head = git("rev-parse", "HEAD", cwd=resolved).stdout.strip()
         if head != manifest["commit"]:
-            print(
-                f"warning: {resolved} HEAD is {head[:12]}, manifest is "
-                f"{manifest['commit'][:12]}; the build imports the checkout as-is",
-                file=sys.stderr,
+            raise SystemExit(
+                f"{resolved} HEAD is {head[:12]} but the manifest pins "
+                f"{manifest['commit'][:12]}; check out the manifest commit or "
+                f"update code-ref.json so the build imports the paired revision"
             )
         return resolved
 
@@ -108,7 +108,9 @@ def resolve_code_dir(manifest: dict, code_dir: Path | None) -> Path:
                 str(dest),
             ]
         )
-    run(["git", "fetch", "--depth", "1", "origin", manifest["commit"]], cwd=dest)
+    # Fetch the paired branch (not a shallow single commit) so the ancestry
+    # check below runs against real history rather than a grafted shallow repo.
+    run(["git", "fetch", "origin", manifest["branch"]], cwd=dest)
     run(["git", "checkout", "--force", manifest["commit"]], cwd=dest)
     verify_commit(dest, manifest)
     return dest
@@ -189,7 +191,12 @@ def build(args: argparse.Namespace) -> Path:
     install_code(code_dir, enabled=not args.no_install)
 
     outdir = (args.outdir or (REPO_ROOT / "build" / "html")).resolve()
-    doctrees = outdir.parent / "doctrees"
+    doctrees = outdir.parent / f"{outdir.name}-doctrees"
+    # Each run produces a fresh channel artifact. Without clearing the output
+    # directory, pages from a previous build (or a previous revision's gallery)
+    # would silently survive into the new artifact.
+    if outdir.exists():
+        shutil.rmtree(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
     gallery = gallery_dir(channel, manifest["commit"], dependency_lock_digest())

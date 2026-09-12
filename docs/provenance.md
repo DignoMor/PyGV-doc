@@ -20,5 +20,5 @@ the code `main` branch; the development channel under `/dev/` describes the
 code `dev` branch.
 
 This pairing exists so that a reader can always reconstruct which public code
-revision produced a page, and so that a release can be pinned in the private
-release ledger.
+revision produced a page, and so that a release can record the exact revisions
+it shipped.
