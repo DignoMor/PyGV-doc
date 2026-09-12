@@ -42,6 +42,7 @@ if _manifest_path.is_file():
 DOC_CHANNEL = _env("PYGV_DOC_CHANNEL", _manifest.get("channel", "development"))
 CODE_COMMIT = _env("PYGV_CODE_COMMIT", _manifest.get("commit", "unknown"))
 CODE_BRANCH = _env("PYGV_CODE_BRANCH", _manifest.get("branch", "unknown"))
+CODE_REPOSITORY = _manifest.get("repository", "")
 DOC_COMMIT = _env("PYGV_DOC_COMMIT", "unknown")
 
 # The exact paired code checkout wins over any installed distribution so that
@@ -112,6 +113,7 @@ myst_substitutions = {
     "code_branch": CODE_BRANCH,
     "code_commit": CODE_COMMIT,
     "code_commit_short": _short(CODE_COMMIT),
+    "code_repository": CODE_REPOSITORY,
     "release": release,
 }
 
@@ -212,7 +214,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/liyao001/PyGV",
+            "url": "https://github.com/DignoMor/PyGV",
             "icon": "fa-brands fa-github",
         },
     ],
@@ -227,4 +229,5 @@ html_context = {
     "code_branch": CODE_BRANCH,
     "code_commit": CODE_COMMIT,
     "code_commit_short": _short(CODE_COMMIT),
+    "code_repository": CODE_REPOSITORY,
 }

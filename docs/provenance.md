@@ -8,7 +8,7 @@ commit; the authored pages come from the exact **documentation** commit.
 | --- | --- |
 | Documentation channel | {{ doc_channel }} |
 | Documentation commit | {{ doc_commit }} |
-| Code repository | https://github.com/liyao001/PyGV |
+| Code repository | {{ code_repository }} |
 | Code branch | {{ code_branch }} |
 | Code commit | {{ code_commit }} |
 | GenomeViewer version | {{ release }} |

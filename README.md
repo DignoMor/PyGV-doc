@@ -1,6 +1,6 @@
 # PyGV documentation
 
-Public documentation for the [PyGV](https://github.com/liyao001/PyGV) genome
+Public documentation for the [PyGV](https://github.com/DignoMor/PyGV) genome
 viewer. This repository hosts the Sphinx site, its build configuration, and the
 GitHub Pages deployment pipeline.
 
