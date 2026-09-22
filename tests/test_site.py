@@ -866,4 +866,3 @@ def test_agent_artifacts_exclude_private_planning_material():
         for marker in PRIVATE_MARKERS:
             assert marker not in body, f"{marker} leaked into {artifact.name}"
         assert not re.search(r"\bADR\b", body), f"ADR marker in {artifact.name}"
-
