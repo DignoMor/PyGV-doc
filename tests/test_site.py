@@ -188,10 +188,19 @@ def test_authored_page_exists(page):
 
 def test_quickstart_runs(tmp_path):
     script = REPO_ROOT / "docs" / "_examples" / "quickstart.py"
+    # The build imports the paired checkout directly (never a floating
+    # installed distribution), so the published snippet must be executed with
+    # that same checkout first on the import path.
+    checkout = _paired_checkout()
+    assert checkout is not None, "paired code checkout is not available"
     output = tmp_path / "quickstart.png"
     env = os.environ.copy()
     env["MPLBACKEND"] = "Agg"
     env["PYGV_QUICKSTART_OUT"] = str(output)
+    existing = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = str(checkout) + (
+        os.pathsep + existing if existing else ""
+    )
     subprocess.run([sys.executable, str(script)], check=True, cwd=tmp_path, env=env)
     assert output.is_file() and output.stat().st_size > 0
 
@@ -363,6 +372,38 @@ def test_changelog_documents_migration():
     assert "Migration checklist" in text
     assert "layout_height()" in text
     assert "Python 3.10" in text
+
+
+def test_license_declarations_are_consistently_gpl_3_or_later():
+    pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'license = "GPL-3.0-or-later"' in pyproject
+    assert 'license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]' in pyproject
+
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "GPL-3.0-or-later" in readme
+
+    notices = (REPO_ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    assert "GPL-3.0-or-later" in notices
+
+    license_text = (REPO_ROOT / "LICENSE").read_text(encoding="utf-8")
+    assert "GNU GENERAL PUBLIC LICENSE" in license_text
+    assert "Version 3, 29 June 2007" in license_text
+    assert "MIT License" not in license_text
+
+
+def test_third_party_notices_cover_theme_assets_and_data():
+    notices = (REPO_ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    for marker in (
+        "Sphinx",
+        "MyST-Parser",
+        "PyData Sphinx Theme",
+        "Sphinx-Gallery",
+        "Matplotlib",
+        "ENCODE",
+        "GENCODE",
+        "GWAS",
+    ):
+        assert marker in notices, marker
 
 
 def test_track_guide_states_the_gwas_contract():
@@ -676,6 +717,17 @@ def _canonical_html_pages() -> list:
 
 def _markdown_links(text: str) -> list:
     return re.findall(r"\]\(([^)\s]+)\)", text)
+
+
+def test_every_canonical_page_displays_the_revision_pairing():
+    build = _build_dir()
+    short = MANIFEST["commit"][:7]
+    pages = _canonical_html_pages()
+    assert pages, "no canonical HTML pages found"
+    for rel in pages:
+        raw = (build / rel).read_text(encoding="utf-8")
+        assert 'class="footer-provenance"' in raw, f"{rel} has no footer provenance"
+        assert short in raw, f"{rel} does not name the paired code commit"
 
 
 def test_each_channel_root_has_exactly_one_llms_txt():

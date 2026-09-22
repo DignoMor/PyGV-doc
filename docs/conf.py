@@ -220,7 +220,9 @@ html_theme_options = {
     ],
     "use_edit_page_button": False,
     "footer_start": ["copyright"],
-    "footer_end": ["last-updated"],
+    # Every page carries the documentation/code pairing, so a reader can tell
+    # which revisions a page describes without opening the provenance page.
+    "footer_end": ["provenance-footer", "last-updated"],
 }
 html_context = {
     "doc_channel": DOC_CHANNEL,

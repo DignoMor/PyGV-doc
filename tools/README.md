@@ -58,7 +58,7 @@ is correct at the Pages project root and beneath `/dev/`.
 Because each published channel is paired to its own documentation branch, a real
 stable build requires the documentation `main` branch to contain this tooling.
 Until then, exercise the assembler with synthetic channel fixtures (see
-`tests/test_assemble.py`) or a locally built development channel plus a copy of
+`tests/test_assemble_site.py`) or a locally built development channel plus a copy of
 it relabeled with the stable provenance.
 
 ## Continuous integration
