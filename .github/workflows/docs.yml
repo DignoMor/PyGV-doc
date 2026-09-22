@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      stable_available: ${{ steps.stable_source.outputs.available }}
     steps:
       # Each channel is built from its own documentation branch, and each
       # branch's tools/build_docs.py reads that branch's code-ref.json and
@@ -40,6 +42,18 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'dev' }}
           path: doc-dev
           fetch-depth: 0
+      # The first release PR has only a placeholder on main. Validate dev now;
+      # publish the combined site once main has a stable manifest and builder.
+      - name: Detect stable documentation source
+        id: stable_source
+        run: |
+          if [ -f doc-main/tools/build_docs.py ] && \
+             [ -f doc-main/code-ref.json ] && \
+             python -c 'import json; m = json.load(open("doc-main/code-ref.json")); assert m["channel"] == "stable" and m["branch"] == "main"'; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -55,6 +69,7 @@ jobs:
       # fighting over the same import name; conf.py imports the checkout
       # directly from PYGV_CODE_DIR.
       - name: Build stable channel
+        if: steps.stable_source.outputs.available == 'true'
         env:
           MPLBACKEND: Agg
         run: |
@@ -74,6 +89,7 @@ jobs:
       # The same suite of authored-content, API, gallery, link-resolution, and
       # agent-artifact checks runs against both built channels.
       - name: Validate stable channel
+        if: steps.stable_source.outputs.available == 'true'
         env:
           MPLBACKEND: Agg
           PYGV_DOC_BUILD: ${{ runner.temp }}/channels/stable
@@ -87,6 +103,7 @@ jobs:
       # Link checking is part of the strict gate for authored pages, generated
       # API reference, gallery navigation, and agent-facing links.
       - name: Link check stable channel
+        if: steps.stable_source.outputs.available == 'true'
         env:
           MPLBACKEND: Agg
         run: |
@@ -108,6 +125,7 @@ jobs:
       # One fresh aggregate is rebuilt from both channels every run, so a
       # single channel's build cannot erase the other.
       - name: Assemble two-channel site
+        if: steps.stable_source.outputs.available == 'true'
         run: |
           python doc-dev/tools/assemble_site.py \
             --stable "$RUNNER_TEMP/channels/stable" \
@@ -115,6 +133,7 @@ jobs:
             --outdir "$RUNNER_TEMP/site"
 
       - name: Upload inspectable site artifact
+        if: steps.stable_source.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: docs-site
@@ -126,7 +145,7 @@ jobs:
     needs: build
     # Pull requests validate only: they never reach this job, so they never
     # invoke configure-pages, upload-pages-artifact, or deploy-pages.
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && needs.build.outputs.stable_available == 'true'
     runs-on: ubuntu-latest
     permissions:
       pages: write

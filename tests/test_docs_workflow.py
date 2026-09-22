@@ -343,4 +343,5 @@ def test_minimal_fallback_loader_understands_the_workflow():
         "pages": "write",
         "id-token": "write",
     }
-    assert data["jobs"]["deploy"]["if"] == "github.event_name != 'pull_request'"
+    assert "github.event_name != 'pull_request'" in data["jobs"]["deploy"]["if"]
+    assert "needs.build.outputs.stable_available == 'true'" in data["jobs"]["deploy"]["if"]
