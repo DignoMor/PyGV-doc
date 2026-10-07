@@ -16,6 +16,12 @@ named code branch, installs (or imports) that checkout, and runs Sphinx with
 warnings treated as errors. The gallery is executed from the paired checkout and
 written to a revision-keyed, disposable directory.
 
+The builder resolves the documented software version from the paired Git
+checkout using its Hatch VCS configuration, even with `--no-install`. It
+fetches release tags and rejects an unresolved version. Install the locked
+`requirements.txt` before building; a direct Sphinx invocation requires the
+version and pairing environment supplied by this entry point.
+
 Local build against an existing checkout:
 
 ```bash

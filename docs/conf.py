@@ -43,6 +43,7 @@ DOC_CHANNEL = _env("PYGV_DOC_CHANNEL", _manifest.get("channel", "development"))
 CODE_COMMIT = _env("PYGV_CODE_COMMIT", _manifest.get("commit", "unknown"))
 CODE_BRANCH = _env("PYGV_CODE_BRANCH", _manifest.get("branch", "unknown"))
 CODE_REPOSITORY = _manifest.get("repository", "")
+DOC_REPOSITORY = "https://github.com/DignoMor/PyGV-doc"
 DOC_COMMIT = _env("PYGV_DOC_COMMIT", "unknown")
 
 # The exact paired code checkout wins over any installed distribution so that
@@ -55,19 +56,12 @@ if _code_dir and Path(_code_dir).is_dir():
 
 
 def _package_release() -> str:
-    try:
-        from pygv import __version__
-
-        if __version__ and __version__ != "0.0.0":
-            return __version__
-    except Exception:
-        pass
-    try:
-        from importlib.metadata import version as pkg_version
-
-        return pkg_version("GenomeViewer")
-    except Exception:
-        return "0.0.0"
+    release = _env("PYGV_CODE_RELEASE")
+    if not release or release == "0.0.0":
+        raise RuntimeError(
+            "documented version is unresolved; build with tools/build_docs.py"
+        )
+    return release
 
 
 # -- Project information -----------------------------------------------------
@@ -114,6 +108,13 @@ myst_substitutions = {
     "code_commit": CODE_COMMIT,
     "code_commit_short": _short(CODE_COMMIT),
     "code_repository": CODE_REPOSITORY,
+    "doc_repository": DOC_REPOSITORY,
+    "code_repository_link": f"[DignoMor/PyGV]({CODE_REPOSITORY})",
+    "doc_repository_link": f"[DignoMor/PyGV-doc]({DOC_REPOSITORY})",
+    "code_commit_link": f"[commit {_short(CODE_COMMIT)}]({CODE_REPOSITORY}/commit/{CODE_COMMIT})",
+    "doc_commit_link": f"[commit {_short(DOC_COMMIT)}]({DOC_REPOSITORY}/commit/{DOC_COMMIT})",
+    "install_command": f'python -m pip install "git+{CODE_REPOSITORY}.git@{CODE_COMMIT}"',
+    "branch_install_command": f'python -m pip install "git+{CODE_REPOSITORY}.git@{CODE_BRANCH}"',
     "release": release,
 }
 

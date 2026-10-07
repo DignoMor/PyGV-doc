@@ -5,13 +5,16 @@ publication-ready genome browser figures. You compose a {term}`genome viewer`
 from one or more {term}`track` objects over a single {term}`genomic interval`,
 then render, inspect, or save the resulting Matplotlib figure.
 
-```{admonition} Documentation channel
+```{admonition} Documented software
 :class: note
 
-This is the **{{ doc_channel }}** documentation channel. It was built from
-documentation commit {{ doc_commit_short }} and describes the public code
-commit {{ code_commit_short }} on the {{ code_branch }} branch. See
-{doc}`provenance` for the full pairing.
+**PyGV {{ release }}** · **{{ doc_channel }}** documentation channel.
+
+- Code repository: {{ code_repository_link }} — {{ code_commit_link }}
+  on `{{ code_branch }}`.
+- Documentation repository: {{ doc_repository_link }} — {{ doc_commit_link }}.
+
+See {doc}`provenance` for the full pairing.
 ```
 
 ```{toctree}

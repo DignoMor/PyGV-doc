@@ -355,6 +355,7 @@ def _short(commit: str) -> str:
 
 def _llms_txt(app, outdir: Path) -> str:
     ctx = _context(app)
+    install_command = app.config.myst_substitutions["install_command"]
     lines: list[str] = []
     lines.append("# PyGV")
     lines.append("")
@@ -371,7 +372,7 @@ def _llms_txt(app, outdir: Path) -> str:
         f"({ctx['code_branch']} branch)."
     )
     lines.append(
-        "- Install with `pip install GenomeViewer`; import the package as "
+        f"- Install with `{install_command}`; import the package as "
         "`pygv` (for example `from pygv.viewer import GenomeViewer`)."
     )
     lines.append(

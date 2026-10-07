@@ -736,12 +736,35 @@ def test_each_channel_root_has_exactly_one_llms_txt():
     assert found == ["llms.txt"]
 
 
+def test_homepage_displays_documented_version_and_public_repository_links():
+    raw = _built_page("index.html").read_text(encoding="utf-8")
+    provenance = re.sub(r"\s+", " ", _html_text(_built_page("provenance.html")))
+    version = re.search(r"GenomeViewer version (\S+)", provenance)
+    assert version and version.group(1) != "0.0.0"
+    assert f"PyGV {version.group(1)}" in _html_text(_built_page("index.html"))
+    assert f'href="{MANIFEST["repository"]}"' in raw
+    assert 'href="https://github.com/DignoMor/PyGV-doc"' in raw
+    assert f'{MANIFEST["repository"]}/commit/{MANIFEST["commit"]}' in raw
+    assert "https://github.com/DignoMor/PyGV-doc/commit/" in raw
+
+
+@pytest.mark.parametrize("page", ["installation", "overview"])
+def test_rendered_installation_matches_paired_code_commit(page):
+    text = _html_text(_built_page(f"{page}.html"))
+    assert f'git+{MANIFEST["repository"]}.git@{MANIFEST["commit"]}' in text
+    assert "pip install GenomeViewer" not in text
+    assert "{{ install_command }}" not in text
+    if page == "installation":
+        assert f'git+{MANIFEST["repository"]}.git@{MANIFEST["branch"]}' in text
+
+
 def test_llms_txt_states_project_install_import_coordinates_and_version():
     text = (_build_dir() / "llms.txt").read_text(encoding="utf-8")
     lines = text.splitlines()
     assert lines[0] == "# PyGV"
     assert lines[2].startswith("> "), "llms.txt must open with a concise summary"
-    assert "pip install GenomeViewer" in text
+    assert f'git+{MANIFEST["repository"]}.git@{MANIFEST["commit"]}' in text
+    assert "pip install GenomeViewer" not in text
     assert "`pygv`" in text and "from pygv.viewer import GenomeViewer" in text
     assert "zero-based" in text and "half-open" in text
     assert "Documentation channel:" in text
