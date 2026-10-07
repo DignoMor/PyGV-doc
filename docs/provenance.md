@@ -8,6 +8,7 @@ commit; the authored pages come from the exact **documentation** commit.
 | --- | --- |
 | Documentation channel | {{ doc_channel }} |
 | Documentation commit | {{ doc_commit }} |
+| Documentation repository | {{ doc_repository }} |
 | Code repository | {{ code_repository }} |
 | Code branch | {{ code_branch }} |
 | Code commit | {{ code_commit }} |

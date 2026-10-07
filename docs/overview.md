@@ -12,11 +12,12 @@ reviewed, and regenerated.
 
 ## The distribution and the import name
 
-PyGV is distributed on PyPI as **`GenomeViewer`**, but the Python package you
-import is **`pygv`**:
+Install PyGV from the {{ code_repository_link }} repository
+at the documented commit. The distribution is named **`GenomeViewer`**,
+but the Python package you import is **`pygv`**:
 
-```shell
-pip install GenomeViewer
+```{parsed-literal}
+{{ install_command }}
 ```
 
 ```python

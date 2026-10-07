@@ -2,11 +2,25 @@
 
 ## Install
 
-Install the distribution from PyPI:
+Install **PyGV {{ release }}** from the
+{{ code_repository_link }} repository at the exact code commit
+documented by this channel. Git must be installed:
 
-```shell
-pip install GenomeViewer
+```{parsed-literal}
+{{ install_command }}
 ```
+
+### Follow the latest branch
+
+To install the latest `{{ code_branch }}` branch instead, use:
+
+```{parsed-literal}
+{{ branch_install_command }}
+```
+
+The stable channel follows `main`; the development channel follows `dev`.
+A branch can advance beyond the revision described here. Use the pinned
+command above to reproduce the documented behavior.
 
 The distribution is named **`GenomeViewer`**, but the import namespace is
 **`pygv`**. If you search your environment for the wrong name you will not

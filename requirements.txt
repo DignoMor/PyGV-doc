@@ -19,5 +19,12 @@ pyfaidx==0.9.0.4
 pydantic==2.13.5
 beautifulsoup4==4.15.0
 
+# Resolve the paired checkout's version using its package build configuration,
+# even when CI skips installation of the two code checkouts.
+hatchling==1.27.0
+hatch-vcs==0.4.0
+setuptools-scm==8.2.0
+tomli==2.2.1
+
 # Test tooling used by the strict channel validation.
 pytest==9.1.1

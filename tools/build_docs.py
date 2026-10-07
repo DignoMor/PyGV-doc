@@ -110,7 +110,7 @@ def resolve_code_dir(manifest: dict, code_dir: Path | None) -> Path:
         )
     # Fetch the paired branch (not a shallow single commit) so the ancestry
     # check below runs against real history rather than a grafted shallow repo.
-    run(["git", "fetch", "origin", manifest["branch"]], cwd=dest)
+    run(["git", "fetch", "--tags", "origin", manifest["branch"]], cwd=dest)
     run(["git", "checkout", "--force", manifest["commit"]], cwd=dest)
     verify_commit(dest, manifest)
     return dest
@@ -137,6 +137,40 @@ def doc_commit() -> str:
         return "unknown"
     result = git("rev-parse", "HEAD", cwd=REPO_ROOT)
     return result.stdout.strip() if result.returncode == 0 else "unknown"
+
+
+def code_release(code_dir: Path) -> str:
+    """Resolve the paired checkout's package version without installing it."""
+    from hatch_vcs.version_source import VCSVersionSource
+
+    try:
+        import tomllib
+    except ImportError:  # Python 3.10
+        import tomli as tomllib
+
+    with (code_dir / "pyproject.toml").open("rb") as source:
+        config = tomllib.load(source)["tool"]["hatch"]["version"]
+    config = dict(config)
+    if config.pop("source", None) != "vcs":
+        raise SystemExit("paired code must use Hatch VCS versioning")
+    # The package permits a fallback for source archives. Documentation must
+    # instead identify a real version from the verified Git checkout.
+    config.pop("fallback-version", None)
+    config["raw-options"] = dict(config.get("raw-options", {}))
+    config["raw-options"].pop("fallback_version", None)
+    tagged = git(
+        "describe", "--tags", "--match", "[0-9]*", "--match", "v[0-9]*",
+        "--exclude", "*dev*", "HEAD", cwd=code_dir,
+    )
+    if tagged.returncode != 0:
+        raise SystemExit("cannot resolve documented version: no reachable release tag")
+    try:
+        release = VCSVersionSource(str(code_dir), config).get_version_data()["version"]
+    except Exception as exc:
+        raise SystemExit(f"cannot resolve documented version: {exc}") from exc
+    if not release or release == "0.0.0":
+        raise SystemExit("cannot resolve documented version: empty or fallback version")
+    return release
 
 
 def dependency_lock_digest() -> str:
@@ -188,6 +222,7 @@ def build(args: argparse.Namespace) -> Path:
     manifest = load_manifest()
     channel = args.channel or manifest["channel"]
     code_dir = resolve_code_dir(manifest, args.code_dir)
+    release = code_release(code_dir)
     install_code(code_dir, enabled=not args.no_install)
 
     outdir = (args.outdir or (REPO_ROOT / "build" / "html")).resolve()
@@ -208,6 +243,7 @@ def build(args: argparse.Namespace) -> Path:
             "PYGV_CODE_DIR": str(code_dir),
             "PYGV_CODE_COMMIT": manifest["commit"],
             "PYGV_CODE_BRANCH": manifest["branch"],
+            "PYGV_CODE_RELEASE": release,
             "PYGV_DOC_CHANNEL": channel,
             "PYGV_DOC_COMMIT": doc_commit(),
             "PYGV_GALLERY_DIR": gallery,
