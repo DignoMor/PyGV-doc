@@ -98,8 +98,9 @@ Track-level and figure-wide annotations are separate concepts.
 - A {term}`track highlight` is a genomic span drawn within the axes of selected
   tracks. `set_highlight_regions` applies one or more highlight regions to every
   registered track, using the chromosome supplied to `plot`, and requires
-  tracks to be registered first. To highlight only specific tracks, call a
-  track's own highlight method instead.
+  tracks to be registered first. Set track highlights **before** `plot`; the
+  call stores the region on each track, and `plot` draws it. To highlight only
+  specific tracks, call a track's own highlight method instead.
 - A {term}`global highlight` is a genomic span drawn continuously across tracks
   and the spaces between them. `set_global_highlight_region` adds it after
   plotting; partial overlaps are clipped to the plotted interval, and a span
@@ -114,3 +115,19 @@ Track-level and figure-wide annotations are separate concepts.
 
 Global highlights, global vertical lines, and axis marks all require a completed
 `plot` call; before that they raise `RuntimeError`.
+
+If a track highlight and global highlight cover the same region, both
+semi-transparent fills are visible in the track panels. Their alpha layers
+stack, making that region look darker than the global band in the subplot gaps.
+For one consistent color across panels and gaps, use only the global highlight.
+If the region should appear only inside track panels, use only the track-level
+highlight. When both APIs are needed, set the track highlight before plotting
+and add the global highlight afterward; choose their transparency values with
+the stacked fill in mind.
+
+```python
+# After adding the tracks to `gv`:
+gv.set_highlight_regions([start], [end], colors=("gold",), alpha_vals=(0.3,))
+gv.plot(chromosome, window_start, window_end)
+gv.set_global_highlight_region(start, end, color="gold", alpha=0.3)
+```
