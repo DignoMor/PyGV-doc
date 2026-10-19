@@ -1,6 +1,6 @@
 {
-  "channel": "development",
+  "channel": "stable",
   "repository": "https://github.com/DignoMor/PyGV",
-  "branch": "dev",
-  "commit": "6c82e670076c34241a142c8a7c66ca94b8c44ad5"
+  "branch": "main",
+  "commit": "d4ee6223662edd828dd952a8e8f73477b3a16ee6"
 }
