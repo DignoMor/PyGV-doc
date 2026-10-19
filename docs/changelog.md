@@ -7,9 +7,9 @@ how you write PyGV code; it is not a release ledger.
 
 ## Documentation 0.2.1
 
-This documentation-only release clarifies highlight call order, replacement,
-and overlap behavior. The stable documentation continues to describe PyGV
-0.2.0; it does not introduce software compatibility changes.
+This release clarifies highlight call order, replacement, and overlap behavior.
+The stable documentation describes PyGV 0.2.1, a version-alignment release
+with no runtime changes since PyGV 0.2.0.
 
 ## Compatibility changes
 
