@@ -5,6 +5,12 @@ paired with this documentation site, as recorded in the
 {doc}`paired code repository <provenance>`. It focuses on changes that affect
 how you write PyGV code; it is not a release ledger.
 
+## Documentation 0.2.1
+
+This documentation-only release clarifies highlight call order, replacement,
+and overlap behavior. The stable documentation continues to describe PyGV
+0.2.0; it does not introduce software compatibility changes.
+
 ## Compatibility changes
 
 ### Breaking
